@@ -1,0 +1,5 @@
+# astrbot_plugin_shared_chat_memory 依赖
+# 本插件仅使用 AstrBot 自身已内置的依赖与 Python 标准库，无额外第三方依赖。
+# 以下保留为占位，便于后续扩展。
+
+# (空) - 暂无第三方依赖

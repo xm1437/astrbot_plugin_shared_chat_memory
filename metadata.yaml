@@ -1,0 +1,8 @@
+name: astrbot_plugin_shared_chat_memory
+desc: 跨会话共享聊天记忆插件。支持三种存储后端：本地 SQLite+BM25（纯本地零依赖）、本地 SQLite+Embedding 向量检索（直接在插件设置中填入 Embedding API）、AstrBot 知识库 API。可在 WebUI 设置中自由切换或同时启用。A 与机器人聊天后，B 询问相关内容时机器人可回忆起 A 的对话。
+author: anonymous
+repo: ""
+version: 1.2.0
+display_name: 共享聊天记忆
+short_desc: 跨用户共享聊天记忆，支持本地BM25/本地向量检索/AstrBot知识库三后端。
+astrbot_version: ">=4.5.0"

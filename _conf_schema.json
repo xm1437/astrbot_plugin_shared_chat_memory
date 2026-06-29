@@ -1,0 +1,224 @@
+{
+  "enable": {
+    "description": "启用插件",
+    "type": "bool",
+    "default": true,
+    "hint": "总开关。关闭后插件不会记录或检索任何会话。"
+  },
+  "backend": {
+    "description": "存储后端",
+    "type": "object",
+    "hint": "选择记忆的存储与检索方式。三种后端可同时启用，写入时会写入所有已启用的后端，召回时会从所有已启用的后端合并结果。",
+    "items": {
+      "use_local": {
+        "description": "本地 SQLite + BM25",
+        "type": "bool",
+        "default": true,
+        "hint": "纯本地实现，零依赖、零成本，开箱即用。使用 SQLite 持久化记忆文档，使用 BM25 算法做关键词匹配召回。适合不想配置 Embedding 模型或希望离线运行的场景。"
+      },
+      "use_local_vector": {
+        "description": "本地 SQLite + Embedding 向量检索",
+        "type": "bool",
+        "default": false,
+        "hint": "【v1.2.0 新增】用 SQLite 存储记忆文本 + Embedding 向量，用余弦相似度做语义检索。需要在下方「Embedding API 配置」中填入 API 地址与密钥。语义理解能力强（能识别同义词），且不依赖 AstrBot 知识库系统，配置全在本插件设置里完成。"
+      },
+      "use_astrbot_kb": {
+        "description": "AstrBot 知识库 API",
+        "type": "bool",
+        "default": false,
+        "hint": "调用 AstrBot 原生知识库系统存储与向量检索。需要先在 WebUI「服务提供商」配置好 Embedding 嵌入模型并创建/选择知识库。"
+      },
+      "local_db_path": {
+        "description": "本地数据库路径（相对 AstrBot 数据目录）",
+        "type": "string",
+        "default": "data/shared_chat_memory.db",
+        "hint": "启用「本地 SQLite+BM25」或「本地 SQLite+Embedding 向量检索」时生效。建议保持默认。"
+      }
+    }
+  },
+  "embedding_api": {
+    "description": "Embedding API 配置",
+    "type": "object",
+    "hint": "【v1.2.0 新增】仅当启用「本地 SQLite + Embedding 向量检索」后端时需要填写。直接在本插件设置中配置 Embedding API，无需去 AstrBot 的「服务提供商」中配置。推荐使用硅基流动（SiliconFlow）的 BAAI/bge-m3 模型，目前免费。",
+    "items": {
+      "api_url": {
+        "description": "Embedding API 地址",
+        "type": "string",
+        "default": "https://api.siliconflow.cn/v1",
+        "hint": "Embedding 服务的 API Base URL。硅基流动填 https://api.siliconflow.cn/v1；OpenAI 填 https://api.openai.com/v1；其他兼容 OpenAI 格式的服务填对应地址。注意不要带末尾斜杠。"
+      },
+      "api_key": {
+        "description": "Embedding API Key",
+        "type": "string",
+        "default": "",
+        "hint": "Embedding 服务的 API 密钥。硅基流动可在 https://cloud.siliconflow.cn/me/account/ak 免费申请。留空则无法使用向量检索后端。"
+      },
+      "model": {
+        "description": "Embedding 模型名称",
+        "type": "string",
+        "default": "BAAI/bge-m3",
+        "hint": "Embedding 模型标识。硅基流动推荐 BAAI/bge-m3（免费、支持中英文、1024维）。其他可选：text-embedding-3-small（OpenAI）、bge-large-zh-v1.5 等。"
+      },
+      "timeout": {
+        "description": "API 请求超时（秒）",
+        "type": "int",
+        "default": 30,
+        "hint": "调用 Embedding API 的超时时间。网络较慢时可适当增大。"
+      }
+    }
+  },
+  "kb_selector": {
+    "description": "使用的 AstrBot 知识库",
+    "type": "list",
+    "default": [],
+    "_special": "select_knowledgebase",
+    "hint": "仅当上方启用「AstrBot 知识库 API」后端时生效。选择用于存储共享记忆的知识库，可多选。留空则自动选用系统中已存在的知识库；若系统也无知识库且开启下方自动创建，会自动新建一个。"
+  },
+  "auto_create_kb": {
+    "description": "无知识库时自动创建",
+    "type": "bool",
+    "default": true,
+    "hint": "仅当启用「AstrBot 知识库 API」后端时生效。若系统中没有任何知识库，插件会按下方名称自动新建。注意：创建知识库需要先在「服务提供商」中配置好 Embedding 嵌入模型。"
+  },
+  "default_kb_name": {
+    "description": "自动创建的知识库名称",
+    "type": "string",
+    "default": "SharedChatMemory",
+    "hint": "自动创建知识库时使用的名称。"
+  },
+  "default_kb_description": {
+    "description": "自动创建的知识库描述",
+    "type": "string",
+    "default": "由 astrbot_plugin_shared_chat_memory 插件自动创建的共享聊天记忆库",
+    "hint": "自动创建知识库时的描述信息。"
+  },
+  "record_settings": {
+    "description": "记忆记录设置",
+    "type": "object",
+    "hint": "控制哪些会话内容会被写入共享记忆库。",
+    "items": {
+      "record_user_messages": {
+        "description": "记录用户消息",
+        "type": "bool",
+        "default": true,
+        "hint": "把用户发送给机器人的消息写入共享记忆库。"
+      },
+      "record_bot_replies": {
+        "description": "记录机器人回复",
+        "type": "bool",
+        "default": true,
+        "hint": "把机器人的回复写入共享记忆库。"
+      },
+      "record_private_chat": {
+        "description": "记录私聊",
+        "type": "bool",
+        "default": true,
+        "hint": "是否记录私聊会话到共享记忆库。"
+      },
+      "record_group_chat": {
+        "description": "记录群聊",
+        "type": "bool",
+        "default": true,
+        "hint": "是否记录群聊会话到共享记忆库。"
+      },
+      "min_message_length": {
+        "description": "最小记录长度",
+        "type": "int",
+        "default": 2,
+        "hint": "短于此字数的消息不会被记录，避免「好的」「哈哈」等无意义内容污染记忆库。"
+      },
+      "max_message_length": {
+        "description": "单条最大记录长度",
+        "type": "int",
+        "default": 2000,
+        "hint": "超过此长度的消息会被截断，防止数据库膨胀。"
+      },
+      "save_pair": {
+        "description": "以对话对形式保存",
+        "type": "bool",
+        "default": true,
+        "hint": "开启时，一次完整问答（用户问 + 机器人答）会合并为一条记忆文档保存，便于检索时还原上下文。"
+      },
+      "max_records": {
+        "description": "记忆库最大条数",
+        "type": "int",
+        "default": 10000,
+        "hint": "仅本地后端生效。记忆库容量上限，超过时最旧的记录会被自动淘汰。设为 0 表示不限制。"
+      }
+    }
+  },
+  "retrieve_settings": {
+    "description": "记忆召回设置",
+    "type": "object",
+    "hint": "控制机器人在回答时如何从共享记忆库检索过往对话。若同时启用两种后端，会合并两者的召回结果。",
+    "items": {
+      "inject_to_llm": {
+        "description": "自动注入到 LLM 上下文",
+        "type": "bool",
+        "default": true,
+        "hint": "开启时，每次用户提问都会先到共享记忆库检索相关历史，并作为上下文注入 LLM 请求。"
+      },
+      "retrieve_top_k": {
+        "description": "召回条数",
+        "type": "int",
+        "default": 3,
+        "hint": "从共享记忆库中检索多少条最相关的记录。数值越大召回越全，但也会消耗更多 token。建议 2~5。"
+      },
+      "min_query_length": {
+        "description": "最小检索长度",
+        "type": "int",
+        "default": 2,
+        "hint": "用户消息短于此字数时不触发检索，避免「你好」之类的问候触发不必要的检索。"
+      },
+      "score_threshold": {
+        "description": "相关度阈值",
+        "type": "float",
+        "default": 0.3,
+        "hint": "0~∞。分数低于此值的检索结果会被丢弃。本地 BM25 建议设为 0.5~2.0，向量检索建议设为 0.2~0.5。设为 0 表示不过滤。"
+      },
+      "include_sender_info": {
+        "description": "在召回中包含发送者信息",
+        "type": "bool",
+        "default": true,
+        "hint": "在注入 LLM 的上下文中标注每条记忆的原始发送者昵称与平台，便于机器人区分「A 说过什么」与「B 说过什么」。"
+      },
+      "system_prompt_template": {
+        "description": "注入到系统提示的模板",
+        "type": "text",
+        "default": "以下是从跨会话共享记忆中检索到的历史对话片段，请结合这些信息回答当前用户的问题：\n\n{memories}\n\n请注意：这些片段来自其他用户与本机器人的历史对话，可以用于回答当前用户关于这些话题的提问。若记忆中没有相关信息，请按你的常识回答，不要捏造记忆内容。",
+        "hint": "用于把检索到的记忆包装成系统提示的模板。其中 {memories} 占位符会被替换为召回的记忆片段。"
+      }
+    }
+  },
+  "privacy": {
+    "description": "隐私设置",
+    "type": "object",
+    "hint": "敏感信息脱敏与白名单。",
+    "items": {
+      "anonymize_senders": {
+        "description": "匿名化发送者",
+        "type": "bool",
+        "default": false,
+        "hint": "开启后，写入记忆库时不保存发送者的真实 ID 与昵称，仅保留平台类型。可提升隐私但会降低机器人区分不同用户的能力。"
+      },
+      "keyword_blacklist": {
+        "description": "关键词黑名单",
+        "type": "list",
+        "default": [],
+        "hint": "包含任一关键词的消息不会被记录。例如填写 [\"密码\", \"验证码\", \"身份证\"]。"
+      },
+      "session_whitelist": {
+        "description": "会话白名单",
+        "type": "list",
+        "default": [],
+        "hint": "若填写了 unified_msg_origin（如 'aiocqhttp:GroupMessage:123456'），则只有这些会话的消息会被记录。留空表示不限制。"
+      }
+    }
+  },
+  "debug": {
+    "description": "调试",
+    "type": "bool",
+    "default": false,
+    "hint": "开启后在日志中输出记忆写入与召回的详细信息，便于排查问题。"
+  }
+}
